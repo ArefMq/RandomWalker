@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="sigma.min.js"></script>
+    <script src="sig/plugins/sigma.renderers.customShapes/shape-library.js"></script>
+    <script src="sig/plugins/sigma.renderers.customShapes/sigma.renderers.customShapes.js"></script>
+    
+    <title>Random Walker</title>
+    <meta charset="UTF-8">
+    <style type="text/css">
+        body {
+            margin: 0;
+            background-color: #000;
+        }
+        #container {
+            position: absolute;
+            width: 90%;
+            height: 90%;
+            margin: 1% 1%;
+        }
+    </style>
+</head>
+<body>
+
+<div id="container"></div>
+
+<script>
+    var s = new sigma('container');
+
+    // Variables
+    var size = 30; // x nodes in x nodes
+    var default_node_size = 0.5;
+    var default_node_color_blue = '#80b0fc';
+    var default_node_color_red = '#fc8080';
+    var node_skip_rate = 5;
+    
+    var default_edge_size = 0.3;
+    var default_edge_color = '#eee';
+    var edge_skip_rate = 20;
+    var teleport_distance = 3;
+    
+    var walked_edge_color = '#ff0';
+    var walked_edge_size = 70;
+    
+    // Functions
+    function createNodes() {
+        var g = s.graph;
+        for (i=0; i<size; i++) {
+            for (j=0; j<size; j++) {
+                p = (i - size/2) * (i - size/2) + (j - size/2) * (j - size/2);
+                if (Math.random()*size*size/2 < p*node_skip_rate)
+                    continue;
+                    
+                var c = ((i + j) % 2 == 0) ? default_node_color_red : default_node_color_blue;
+            
+                node_name = 'n_' + i + '_' + j;
+                g.addNode({
+                    id: node_name,
+                    x: i,
+                    y: j,
+                    size: default_node_size,
+                    color: c,
+                    type: 'square'
+                });
+            }
+        }
+    }
+    
+    function dist(n1, n2) {
+        var dx = n1['x'] - n2['x'];
+        var dy = n1['y'] - n2['y'];
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+    
+    function near(n1, n2) {
+        return dist(n1, n2) < 1.1;
+    }
+    
+    function connectEdges() {
+        var nodes = s.graph.nodes();
+        l = nodes.length;
+        
+        for (i=0; i<l; i++) {
+            for (j=i+1; j<l; j++) {
+                n1 = nodes[i];
+                n2 = nodes[j];
+                
+                if (!near(n1, n2))
+                    continue;
+                
+                if (Math.random() * 100 < edge_skip_rate)
+                    continue;
+                
+                s.graph.addEdge({
+                    id: 'e_' + n1['id'] + '_' + n2['id'],
+                    target: n1['id'],
+                    source: n2['id'],
+                    size: default_edge_size,
+                    color: default_edge_color
+                });
+            }
+        }
+    }    
+    
+    var edges = null;
+    var nodes = null;
+    var walkers = null;
+    var teleport_factor = 0;
+    var edges_number = 0;
+    var nodes_number = 0;
+
+    function calc_target_id(source_id) {
+        //console.log(nodes);
+        var source_name = nodes[source_id]['id'];
+
+        var valid_edges = [];
+        edges.forEach(function (e, i) {
+            if (i < edges_number && e['source'] === source_name || e['target'] === source_name)
+                valid_edges.push(e);
+        });
+        var selected_edge = valid_edges[Math.floor(Math.random() * valid_edges.length)];
+        
+        //console.log(selected_edge);
+        if (selected_edge['source'] === source_name)
+            selected_edge = selected_edge['target'];
+        else if (selected_edge['target'] === source_name)
+            selected_edge = selected_edge['source'];
+
+        for (i=0; i<nodes_number; i++)
+            if (nodes[i]['id'] === selected_edge)
+                return i;
+        return -1;
+    }
+    
+    function colorize_edge(n_id_1, n_id_2) {
+        var name1 = s.graph.nodes()[n_id_1]['id'];
+        var name2 = s.graph.nodes()[n_id_2]['id'];
+        var edge_id = 0;
+        
+        var t1 = ('e_' + name1 + '_' + name2);
+        var t2 = ('e_' + name2 + '_' + name1);
+        s.graph.edges().forEach(function(a, i) {
+            if (a['id'] === t1 || a['id'] === t2) {
+                edge_id = i;
+            }
+        });
+        
+        s.graph.edges()[edge_id]['color'] = walked_edge_color;
+        s.graph.edges()[edge_id]['size'] = walked_edge_size;
+        s.graph.nodes()[n_id_2]['color'] = walked_edge_color;
+        s.graph.nodes()[n_id_2]['size'] += 0.01;
+    }
+
+    function Walker(walker_id, source_node_id, color) {
+        this.walker_id = walker_id;
+        this.color = color;
+
+        this.update_target = function(source_id) {
+            this.source_id = source_id;
+            this.target_id = calc_target_id(this.source_id);
+
+            this.current_x = nodes[this.source_id]['x'];
+            this.current_y = nodes[this.source_id]['y'];
+
+            this.target_x = nodes[this.target_id]['x'];
+            this.target_y = nodes[this.target_id]['y'];
+        }
+
+        this.init_node_id = source_node_id
+        this.update_target(this.init_node_id);
+
+        s.graph.addNode({
+            id: 'walker' + this.walker_id,
+            x: this.current_x,
+            y: this.current_y,
+            size: 0.5,
+            color: this.color,
+            type: 'square'
+        }).addEdge({
+            id: 'e_walker' + this.walker_id,
+            target: 'walker' + this.walker_id,
+            source: nodes[this.source_id]['id'],
+            size: 5.8,
+            color: this.color,
+            type: 'arrow'
+        });
+
+        this.act = function () {
+            if (Math.abs(this.current_x - this.target_x) < 0.085 &&
+                Math.abs(this.current_y - this.target_y) < 0.085) {
+                colorize_edge(this.source_id, this.target_id);
+                if (Math.random() < teleport_factor || 
+                    dist({
+                        'x': this.current_x,
+                        'y': this.current_y
+                    },s.graph.nodes()[this.init_node_id]) > teleport_distance) {
+                    teleport_factor = 0;
+                    this.update_target(this.init_node_id);
+                }
+                else {
+                    this.update_target(this.target_id);
+                }
+            }
+            else {
+                if (this.current_x < this.target_x)
+                    this.current_x += 0.08;
+                if (this.current_x > this.target_x)
+                    this.current_x -= 0.08;
+
+                if (this.current_y < this.target_y)
+                    this.current_y += 0.08;
+                if (this.current_y > this.target_y)
+                    this.current_y -= 0.08;
+            }
+            
+            s.graph.nodes()[this.walker_id]['x'] = this.current_x;
+            s.graph.nodes()[this.walker_id]['y'] = this.current_y;
+        }
+    }
+    
+    function go_on_teleport() {
+        teleport_factor = 1;
+    }
+
+    function run() {
+        walkers.act();
+        s.refresh();
+        setTimeout('run();', 10);
+    }
+    
+    function init() {
+        createNodes();
+        connectEdges();
+        
+        edges = s.graph.edges();
+        nodes = s.graph.nodes();
+        edges_number = s.graph.edges().length;
+        nodes_number = s.graph.nodes().length;
+        
+        var init_node_id = Math.floor(Math.random() * nodes_number);
+        walkers = new Walker(nodes_number, init_node_id, '#fffa00');
+    }
+    
+    init();
+    run();
+</script>
+<div style="color:white; cursor: pointer" onclick="go_on_teleport();">Teleport to Origin</div>
+</body>
+</html>
+
