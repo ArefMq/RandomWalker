@@ -18,6 +18,9 @@
             height: 90%;
             margin: 1% 1%;
         }
+        
+        footer { margin: 10px; position: absolute; bottom: 0; left: 0; font-size: x-small; color: #ccc; }
+        a, a:hover, a:visited, a:active, a:link { cursor: pointer; color:inherit; text-decoration: none; }
     </style>
 </head>
 <body>
@@ -105,7 +108,6 @@
     var edges = null;
     var nodes = null;
     var walkers = [];
-    var teleport_factor = 0;
     var edges_number = 0;
     var nodes_number = 0;
 
@@ -194,7 +196,7 @@
                         'y': this.current_y
                     }, s.graph.nodes()[this.init_node_id]);
                 d = ((d-teleport_distance) / (1.0+Math.abs(d-teleport_distance)) + 1.0) / 2.0;
-                if (Math.random() < (teleport_factor + d)) {
+                if (Math.random() < d) {
                     teleport_factor = 0;
                     this.update_target(this.init_node_id);
                 }
@@ -217,10 +219,6 @@
             s.graph.nodes()[this.walker_id]['x'] = this.current_x;
             s.graph.nodes()[this.walker_id]['y'] = this.current_y;
         }
-    }
-    
-    function go_on_teleport() {
-        teleport_factor = 1;
     }
 
     function run() {
@@ -251,7 +249,7 @@
     init();
     run();
 </script>
-<div style="color:white; cursor: pointer" onclick="go_on_teleport();">Teleport to Origin</div>
+<footer>&copy; Aref M. Mehr - 2017 | <a href="https://github.com/ArefMq/RandomWalker" target="_blank">Code Available at here</a></footer>
 </body>
 </html>
 
