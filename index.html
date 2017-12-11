@@ -37,7 +37,7 @@
     var default_edge_size = 0.3;
     var default_edge_color = '#eee';
     var edge_skip_rate = 20;
-    var teleport_distance = 3;
+    var teleport_distance = 7;
     
     var walked_edge_color = '#ff0';
     var walked_edge_size = 70;
@@ -189,11 +189,12 @@
             if (Math.abs(this.current_x - this.target_x) < 0.085 &&
                 Math.abs(this.current_y - this.target_y) < 0.085) {
                 colorize_edge(this.source_id, this.target_id);
-                if (Math.random() < teleport_factor || 
-                    dist({
+                var d = dist({
                         'x': this.current_x,
                         'y': this.current_y
-                    },s.graph.nodes()[this.init_node_id]) > teleport_distance) {
+                    }, s.graph.nodes()[this.init_node_id]);
+                d = ((d-teleport_distance) / (1.0+Math.abs(d-teleport_distance)) + 1.0) / 2.0;
+                if (Math.random() < (teleport_factor + d)) {
                     teleport_factor = 0;
                     this.update_target(this.init_node_id);
                 }
